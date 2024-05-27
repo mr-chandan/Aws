@@ -1,7 +1,7 @@
 const express = require('express');
-const { DynamoDBClient, PutItemCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, PutItemCommand, GetItemCommand } = require("@aws-sdk/client-dynamodb");
 const { v4: uuidv4 } = require('uuid');
-const { SQSClient, SendMessageCommand } = require("@aws-sdk/client-sqs");
+const { SQSClient, SendMessageCommand ,ReceiveMessageCommand} = require("@aws-sdk/client-sqs");
 
 const app = express();
 app.use(express.json());
@@ -51,6 +51,54 @@ app.post('/submit-code', async (req, res) => {
     }
 });
 
+
+app.get('/check-status/:executionId', async (req, res) => {
+    const { executionId } = req.params;
+
+    const params = {
+        QueueUrl: process.env.QUEUE_URL,
+        MaxNumberOfMessages: 10,
+        WaitTimeSeconds: 0,
+        VisibilityTimeout: 0,
+    };
+
+    try {
+        const data = await sqsClient.send(new ReceiveMessageCommand(params));
+
+        let found = false;
+        if (data.Messages) {
+            for (const message of data.Messages) {
+                const body = JSON.parse(message.Body);
+                if (body.executionId === executionId) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (found) {
+            res.json({ status: 'pending', result: '' });
+        } else {
+            const dbParams = {
+                TableName: 'code',
+                Key: {
+                    executionId: { S: executionId },
+                },
+            };
+            const dbData = await DBclient.send(new GetItemCommand(dbParams));
+            if (dbData.Item) {
+                const status = dbData.Item.status.S;
+                const result = dbData.Item.result.S;
+                res.json({ status, result });
+            } else {
+                res.status(404).json({ error: "Execution ID not found" });
+            }
+        }
+    } catch (error) {
+        console.error("Error checking status:", error);
+        res.status(500).json({ error: "Failed to check status" });
+    }
+});
 
 app.listen(3000, () => {
     console.log('primary backend listening on port 3000!')
