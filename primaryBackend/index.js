@@ -7,6 +7,12 @@ const app = express();
 app.use(express.json());
 require('dotenv').config();
 
+
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+}))
+
 const config = {
     region: "eu-north-1",
     credentials: {
@@ -18,6 +24,7 @@ const DBclient = new DynamoDBClient(config);
 const sqsClient = new SQSClient(config);
 
 app.post('/submit-code', async (req, res) => {
+    console.log(req.body)
     const executionId = uuidv4();
     const { code } = req.body;
 

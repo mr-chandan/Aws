@@ -1,25 +1,79 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { SVGProps, useRef } from "react";
+import { SVGProps, useRef, useState } from "react";
 import "./App.css";
 import { Button } from "./components/ui/button";
-import Editor, { Monaco } from "@monaco-editor/react";
+import Editor from "@monaco-editor/react";
 import { editor as monacoEditor } from "monaco-editor";
 
 function App() {
   const editorRef = useRef<monacoEditor.IStandaloneCodeEditor | null>(null);
+  const [output, setOutput] = useState<string>("");
+  const [, setExecutionId] = useState<string | null>(null);
 
-  function handleEditorDidMount(
-    editor: monacoEditor.IStandaloneCodeEditor,
-    monaco: Monaco
-  ) {
+  function handleEditorDidMount(editor: monacoEditor.IStandaloneCodeEditor) {
     editorRef.current = editor;
   }
 
-  function showValue() {
-    if (editorRef.current) {
-      alert(editorRef.current.getValue());
+  const codeSnippets = [
+    `"app" + "le"`,
+    `Math.floor(22/7)`,
+    `{name: "Borat", hobbies: ["disco dance", "sunbathing"]}`,
+    `(function square(b) { return b * b; })(5)`,
+  ];
+
+  async function submitCode(code: string) {
+    try {
+      const response = await fetch("https://01l3gsvnfl.execute-api.eu-north-1.amazonaws.com/submit-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(data);
+      setExecutionId(data.executionId);
+      checkStatus(data.executionId);
+    } catch (error) {
+      console.error("Error submitting code:", error);
+      setOutput(`Error submitting code: ${(error as Error).message}`);
     }
   }
+
+  async function checkStatus(executionId: string) {
+    try {
+      const response = await fetch(`https://01l3gsvnfl.execute-api.eu-north-1.amazonaws.com/check-status/${executionId}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.status === "Executed") {
+        setOutput(data.result);
+      } else {
+        setTimeout(() => checkStatus(executionId), 3000); // Poll every 2 seconds
+      }
+    } catch (error) {
+      console.error("Error checking status:", error);
+      setOutput(`Error checking status: ${(error as Error).message}`);
+    }
+  }
+
+  function handleRunClick() {
+    if (editorRef.current) {
+      const code = editorRef.current.getValue();
+      setOutput("Code is being executed...");
+      submitCode(code);
+    }
+  }
+
   return (
     <div className="flex h-screen w-full flex-col bg-gray-950 text-gray-50">
       <header className="flex items-center justify-between border-b border-gray-800 px-4 py-4 sm:px-6">
@@ -27,7 +81,7 @@ function App() {
           <CodeIcon className="h-6 w-6" />
           <span className="text-xl font-semibold">Code Playground</span>
         </div>
-        <Button onClick={showValue}>Run</Button>
+        <Button onClick={handleRunClick}>Run</Button>
       </header>
       <div className="flex-1 overflow-hidden">
         <div className="grid h-full grid-cols-1 gap-6 p-4 sm:grid-cols-[1fr_400px] sm:p-6">
@@ -47,9 +101,11 @@ function App() {
             </div>
             <div className="flex-1 overflow-auto p-4">
               <Editor
-                defaultLanguage="python"
+                defaultLanguage="javascript"
                 theme="vs-dark"
-                defaultValue="print('Hello, world!')"
+                defaultValue={
+                  codeSnippets[Math.floor(Math.random() * codeSnippets.length)]
+                }
                 onMount={handleEditorDidMount}
                 options={{}}
               />
@@ -70,10 +126,9 @@ function App() {
               </div>
             </div>
             <div className="flex-1 overflow-auto p-4">
-              {" "}
-              {/* Added padding for better visibility */}
               <pre className="whitespace-pre-wrap break-words font-mono text-sm">
-                Hello, world!
+                <span>- </span>
+                {output}
               </pre>
             </div>
           </div>

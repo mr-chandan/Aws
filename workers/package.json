@@ -11,6 +11,6 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.584.0",
     "@aws-sdk/client-sns": "^3.583.0",
-    "safe-eval": "^0.4.1"
+    " ": "^0.4.1"
   }
 }

@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "proxy" : "https://01l3gsvnfl.execute-api.eu-north-1.amazonaws.com",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
