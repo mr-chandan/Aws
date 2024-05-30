@@ -2,7 +2,7 @@ const express = require('express');
 const { DynamoDBClient, PutItemCommand, GetItemCommand } = require("@aws-sdk/client-dynamodb");
 const { v4: uuidv4 } = require('uuid');
 const { SQSClient, SendMessageCommand ,ReceiveMessageCommand} = require("@aws-sdk/client-sqs");
-
+const cors = require('cors');
 const app = express();
 app.use(express.json());
 require('dotenv').config();
