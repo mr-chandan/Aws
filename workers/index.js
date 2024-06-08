@@ -5,7 +5,7 @@ const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require("@aws
 require('dotenv').config();
 const app = express();
 app.use(express.json());
-require('dotenv').config();
+
 
 const config = {
     region: "eu-north-1",
@@ -46,7 +46,7 @@ const processMessage = async (message) => {
             outputString = "this code cant be executed";
         }
 
-        // Update DynamoDB with the result
+
         const input = {
             TableName: 'code',
             Key: {
@@ -65,7 +65,6 @@ const processMessage = async (message) => {
 
         await DBclient.send(new UpdateItemCommand(input));
 
-        // Delete the message from SQS after processing
         await sqsClient.send(new DeleteMessageCommand({
             QueueUrl: process.env.QUEUE_URL,
             ReceiptHandle: message.ReceiptHandle,
